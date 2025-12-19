@@ -1,12 +1,22 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    // Guard biar build aman
+    if (!process.env.DATABASE_URL) {
+      return Response.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
     const kurirCount = await prisma.user.count({
       where: { role: "KURIR" },
     });
 
-    // "customer yang ingin diantar" -> jadwal yang belum selesai (PICKUP/PROSES)
+    // jadwal yang belum selesai
     const pendingAntarCount = await prisma.jadwal.count({
       where: { status: { in: ["PICKUP", "PROSES"] } },
     });
@@ -22,10 +32,14 @@ export async function GET() {
     });
 
     const statusMap = { PICKUP: 0, PROSES: 0, ANTAR: 0 };
-    for (const row of jadwalByStatus) statusMap[row.status] = row._count._all;
+    for (const row of jadwalByStatus) {
+      statusMap[row.status] = row._count._all;
+    }
 
     const roleMap = { ADMIN: 0, KURIR: 0 };
-    for (const row of userByRole) roleMap[row.role] = row._count._all;
+    for (const row of userByRole) {
+      roleMap[row.role] = row._count._all;
+    }
 
     return Response.json({
       kurirCount,
